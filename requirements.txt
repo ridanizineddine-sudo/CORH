@@ -1,1 +1,2 @@
 # Aucun package externe nécessaire
+psycopg2-binary

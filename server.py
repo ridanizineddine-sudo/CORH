@@ -2,7 +2,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import json
 import mimetypes
-import sqlite3
+import psycopg2
 import webbrowser
 import os
 
@@ -45,10 +45,22 @@ def seed_data():
 
 
 def connect():
-    con = sqlite3.connect(DB_PATH)
-    con.execute(
-        "CREATE TABLE IF NOT EXISTS app_state (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
-    )
+    database_url = os.environ.get("DATABASE_URL")
+
+    if not database_url:
+        raise RuntimeError("DATABASE_URL manquant")
+
+    con = psycopg2.connect(database_url)
+
+    with con.cursor() as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS app_state (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+        """)
+        con.commit()
+
     return con
 
 
