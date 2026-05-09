@@ -66,9 +66,13 @@ def connect():
 
 def load_state():
     with connect() as con:
-        row = con.execute("SELECT value FROM app_state WHERE key = 'state'").fetchone()
+        with con.cursor() as cur:
+            cur.execute("SELECT value FROM app_state WHERE key = 'state'")
+            row = cur.fetchone()
+
         if row:
             return json.loads(row[0])
+
         state = seed_data()
         save_state(state)
         return state
@@ -76,12 +80,19 @@ def load_state():
 
 def save_state(state):
     payload = json.dumps(state, ensure_ascii=False)
-    with connect() as con:
-        con.execute(
-            "INSERT OR REPLACE INTO app_state (key, value) VALUES ('state', ?)",
-            (payload,),
-        )
 
+    with connect() as con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO app_state (key, value)
+                VALUES ('state', %s)
+                ON CONFLICT (key)
+                DO UPDATE SET value = EXCLUDED.value
+                """,
+                (payload,),
+            )
+            con.commit()
 
 class CoRHHandler(BaseHTTPRequestHandler):
     def send_json(self, status, payload):
